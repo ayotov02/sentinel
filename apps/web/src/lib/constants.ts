@@ -14,3 +14,17 @@ export const NAV_ITEMS = [
 export const DEFAULT_MAP_CENTER = { lat: 35, lon: 35 };
 
 export const ANIMATION_SPEEDS = [1, 2, 5, 10, 50];
+
+export const GPS_JAMMING_COLORS: Record<string, string> = {
+  low: '#fbbf24',
+  medium: '#f97316',
+  high: '#ef4444',
+  severe: '#dc2626',
+};
+
+export const SOURCE_STATUS_COLORS: Record<string, string> = {
+  healthy: '#22c55e',
+  degraded: '#f59e0b',
+  circuit_open: '#ef4444',
+  idle: '#6b7280',
+};

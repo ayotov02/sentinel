@@ -149,3 +149,24 @@ export const generateBriefing = (entityIds: string[], timeRange: any, context?: 
 
 // Collaboration
 export const getCollaborationToken = (docId: string) => request<any>(`/collaboration/token/${docId}`);
+
+// Sanctions
+export const screenEntity = (entityId: string) =>
+  request<any>(`/sanctions/screen/${entityId}`, { method: 'POST' });
+
+export const searchSanctions = (q: string) =>
+  request<any[]>(`/sanctions/search?q=${encodeURIComponent(q)}`);
+
+export const importOFAC = () =>
+  request<any>('/sanctions/import/ofac', { method: 'POST' });
+
+export const getSanctionsStats = () =>
+  request<any>('/sanctions/stats');
+
+// Embeddings
+export const semanticSearch = (query: string, limit = 20) =>
+  request<any[]>(`/embeddings/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+
+// OSINT Health
+export const getSourceHealth = () =>
+  request<any[]>('/osint/health');
