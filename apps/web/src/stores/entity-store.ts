@@ -7,6 +7,8 @@ interface EntityState {
   selectedEntityId: string | null;
   hoveredEntityId: string | null;
   followingEntityId: string | null;
+  sourceHealth: Record<string, { status: string; lastPoll: number; failures: number }>;
+  setSourceHealth: (health: Record<string, { status: string; lastPoll: number; failures: number }>) => void;
 
   setEntities: (entities: Entity[]) => void;
   updateEntity: (entity: Entity) => void;
@@ -25,6 +27,8 @@ export const useEntityStore = create<EntityState>((set, get) => ({
   selectedEntityId: null,
   hoveredEntityId: null,
   followingEntityId: null,
+  sourceHealth: {},
+  setSourceHealth: (health) => set({ sourceHealth: health }),
 
   setEntities: (entities) =>
     set({ entities: new Map(entities.map((e) => [e.entityId, e])) }),

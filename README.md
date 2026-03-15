@@ -1,81 +1,77 @@
 # SENTINEL — OSINT Intelligence Platform
 
-A full-scope open-source intelligence (OSINT) platform for real-time geospatial tracking, link analysis, and AI-powered intelligence workflows. Built on AWS with Amazon Nova AI models, CesiumJS 3D globe, and a modern React + NestJS stack.
+> Real-time geospatial intelligence platform built on AWS. Combines 8 live OSINT data sources with Amazon Nova AI for entity extraction, link analysis, and threat correlation.
+
+**Built for the AWS + Amazon Nova Hackathon — March 2026**
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     React SPA (Vite)                        │
-│  CesiumJS + deck.gl │ React Flow │ BlockNote │ shadcn/ui    │
-├─────────────────────────────────────────────────────────────┤
-│              NestJS Modular Monolith API                    │
-│  REST + Socket.IO + SSE Streaming + Protobuf Binary Frames  │
-├──────────┬──────────┬──────────┬──────────┬─────────────────┤
-│TimescaleDB│ Memgraph │  Redis   │ Y-Sweet  │ AWS Bedrock     │
-│ + PostGIS │  (Graph) │ (PubSub) │  (CRDT)  │ (8 Nova Models) │
-└──────────┴──────────┴──────────┴──────────┴─────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                      React SPA (Vite)                            │
+│  CesiumJS + deck.gl │ React Flow + Dagre │ BlockNote │ shadcn/ui │
+├──────────────────────────────────────────────────────────────────┤
+│               NestJS Modular Monolith API (16 modules)           │
+│  REST + Socket.IO + SSE Streaming + Protobuf Binary Frames       │
+├──────────┬──────────┬──────────┬──────────┬──────────────────────┤
+│TimescaleDB│ Memgraph │  Redis   │ Y-Sweet  │ AWS Bedrock          │
+│ + PostGIS │  (Graph) │ (PubSub) │  (CRDT)  │ (8 Nova Models)     │
+│ + pgvector│          │          │          │ + OpenSanctions      │
+└──────────┴──────────┴──────────┴──────────┴──────────────────────┘
 ```
 
-## Features
+## 8 Amazon Nova AI Models
 
-### 11 UI Modules
-1. **Command Center** — 3D globe (CesiumJS + deck.gl) with live entity tracking
-2. **Link Analysis Canvas** — Graph visualization (React Flow) with PageRank, community detection
-3. **Timeline View** — Horizontal event timeline with minute-to-year zoom
-4. **Investigation Workspace** — Case management with Yjs collaborative editing
-5. **Alert & Watchlist Engine** — Rule builder (geofence, attribute, correlation, pattern, proximity)
-6. **Entity Profile** — Detailed entity view with properties, timeline, relationships
-7. **Unstructured Data Ingestion** — Drag-drop upload with AI entity extraction review
-8. **Global Search** — Faceted search with autocomplete across all entity types
-9. **Pattern of Life Analyzer** — Movement heatmaps, anomaly detection, route comparison
-10. **AI Intelligence Assistant** — Chat with Nova Pro, briefing generation with Nova Premier
-11. **Admin & Settings** — Data source health, user management, audit log
+| Model | ID | Use Case |
+|-------|----|----------|
+| Nova 2 Lite | `amazon.nova-2-lite-v1:0` | Entity extraction from GDELT articles (forced tool call, structured outputs) |
+| Nova 2 Sonic | `amazon.nova-2-sonic-v1:0` | Voice AI interface — bidirectional HTTP/2 streaming for hands-free analysis |
+| Nova Pro | `amazon.nova-pro-v1:0` | Multimodal analysis (images, video, 300K context), real-time chat assistant |
+| Nova Premier | `amazon.nova-premier-v1:0` | Deep reasoning orchestrator (1M context), intelligence briefing generation |
+| Nova Canvas | `amazon.nova-canvas-v1:0` | Image generation/editing for satellite imagery annotation |
+| Nova Reel | `amazon.nova-reel-v1:1` | Video generation (async, S3 output) for incident reconstruction |
+| Nova Act | `nova-act` | OSINT web automation — Equasis vessel lookup, OpenCorporates company search |
+| Nova Embeddings | `amazon.nova-2-multimodal-embeddings-v1:0` | Cross-modal semantic search via pgvector |
 
-### 8 Amazon Nova AI Models
-| Model | Use Case |
-|-------|----------|
-| Nova 2 Lite | Entity extraction (structured outputs, extended thinking) |
-| Nova 2 Sonic | Voice AI interface (bidirectional HTTP/2 streaming) |
-| Nova Pro | Multimodal analysis (images, video, 300K context) |
-| Nova Premier | Deep reasoning orchestrator (1M context, briefings) |
-| Nova Canvas | Image generation/editing (satellite annotation) |
-| Nova Reel | Video generation (async, S3 output) |
-| Nova Act | OSINT web automation agents |
-| Nova Multimodal Embeddings | Cross-modal semantic search |
+## 8 Live OSINT Data Sources
 
-### 8 OSINT Data Sources
-| Source | Data Type | Polling Interval |
-|--------|-----------|------------------|
-| OpenSky Network | Aircraft ADS-B | 10s |
-| ADS-B Exchange | Aircraft (extended) | 5s |
-| AISHub | Vessel AIS | 60s |
-| ACLED | Conflict events | Daily |
-| IODA | Internet outages | 5min |
-| Space-Track | Satellite TLE | Hourly |
-| FAA NOTAM | Airspace notices | 15min |
-| NASA FIRMS | Fire hotspots | 30min |
+| Source | Data | API | Key Required |
+|--------|------|-----|-------------|
+| Airplanes.live | Aircraft ADS-B positions | REST (15s poll) | No |
+| AISStream.io | Vessel AIS positions | WebSocket (real-time) | Yes |
+| GDELT Project | Global news events | REST (15 min poll) | No |
+| ACLED | Conflict events | REST (daily) | Yes (free) |
+| USGS/NOAA | Earthquakes, weather | REST | No |
+| IODA | Internet outages | REST (5 min) | No |
+| Space-Track / CelesTrak | Satellite TLEs | REST (hourly) | Yes (free) |
+| FAA NOTAMs | Airspace notices | REST (15 min) | Yes (free) |
+| NASA FIRMS | Fire hotspots | REST (30 min) | Yes (free) |
 
-## Tech Stack
+## Intelligence Features
 
-- **Frontend:** React 18.3, Vite 6, TypeScript, TailwindCSS, shadcn/ui, Zustand, TanStack Query
-- **3D Globe:** CesiumJS + deck.gl with camera sync
-- **Graph:** React Flow 12 with 7 custom entity node types
-- **Collaboration:** Yjs + Y-Sweet CRDT sync, BlockNote editor
-- **Backend:** NestJS 10 modular monolith (12 modules)
-- **Database:** TimescaleDB (hypertables, continuous aggregates) + PostGIS
-- **Graph DB:** Memgraph 3.8+ with MAGE algorithms (PageRank, community detection)
-- **Cache/PubSub:** Redis 7.4 with sharded pub/sub, H3 geo-partitioned channels
-- **Real-time:** Socket.IO + Redis adapter, Protobuf binary frames
-- **AI:** AWS Bedrock with 8 Nova models, SSE streaming
-- **Auth:** JWT with bcrypt password hashing
+- **GPS Jamming Detection** — NACp degradation analysis from ADS-B data, correlated with NOTAMs for military exercise identification
+- **Dark Vessel Detection** — AIS gap analysis (>6h), Ship-to-Ship (STS) transfer proximity detection, flag risk scoring
+- **Cross-Source Correlation** — GPS jamming + NOTAM = military; Internet outage + conflict = escalation; Dark vessel + fire = sanctions evasion
+- **GDELT Entity Extraction Pipeline** — 15-min cron: fetch articles → Nova 2 Lite extraction → PostgreSQL/Memgraph → sanctions screening → pgvector indexing
+- **Sanctions Screening** — OpenSanctions + OFAC/UN lists integration
+- **Semantic Search** — pgvector embeddings via Nova Multimodal Embeddings
 
 ## Quick Start
 
 ### Prerequisites
-- Node.js 20+
-- pnpm 9+
+- Node.js 20+ / pnpm 9+
 - Docker & Docker Compose
+- AWS credentials with Bedrock access (for AI features)
+
+### API Keys (register for free)
+
+| Service | Environment Variable | Registration |
+|---------|---------------------|--------------|
+| AISStream.io | `AISSTREAM_API_KEY` | https://aisstream.io |
+| ACLED | `ACLED_EMAIL` / `ACLED_KEY` | https://acleddata.com/register |
+| Space-Track | `SPACETRACK_USERNAME` / `SPACETRACK_PASSWORD` | https://www.space-track.org/auth/createAccount |
+| FAA NOTAMs | `FAA_API_KEY` | https://api.faa.gov |
+| NASA FIRMS | `FIRMS_MAP_KEY` | https://firms.modaps.eosdis.nasa.gov/api |
 
 ### Setup
 
@@ -86,8 +82,9 @@ cd sentinel
 
 # Copy environment variables
 cp .env.example .env
+# Edit .env with your API keys (optional — app works with Airplanes.live + GDELT without keys)
 
-# Start infrastructure
+# Start infrastructure (TimescaleDB, Redis, Memgraph, Y-Sweet)
 docker compose up -d
 
 # Install dependencies
@@ -96,56 +93,81 @@ pnpm install
 # Run database migrations
 pnpm --filter api run db:migrate
 
-# Seed sample data
+# Seed default users and alert rules
 pnpm --filter api run db:seed
 
-# Start API server (port 3000)
+# Start API server (port 3000) — OSINT polling begins automatically
 pnpm --filter api run start:dev
 
-# Start web app (port 5173)
+# Start web app (port 5173) — dark globe loads with CartoDB tiles (no Ion token)
 pnpm --filter web run dev
 ```
 
-### Default Users (from seed data)
+### Default Users
 | Email | Password | Role |
 |-------|----------|------|
-| admin@sentinel.dev | admin123 | admin |
-| analyst1@sentinel.dev | analyst123 | analyst |
-| analyst2@sentinel.dev | analyst123 | analyst |
+| admin@sentinel.io | sentinel123 | admin |
+| analyst1@sentinel.io | sentinel123 | analyst |
+| analyst2@sentinel.io | sentinel123 | analyst |
+
+## Demo Walkthrough
+
+1. **Globe View** — Dark CesiumJS globe loads with CartoDB tiles. Aircraft appear within 15s from Airplanes.live (no API key needed). GDELT events populate within 15 minutes.
+
+2. **Entity Tracking** — Click any entity on the globe to see its profile card. Entity positions stream via WebSocket into typed-array buffers (50K+ entity capacity at 60fps).
+
+3. **Link Analysis** — Switch to Graph view. Click "Dagre Layout" for automatic hierarchical layout. "Detect Communities" highlights entity clusters. "Shortest Path" finds connections.
+
+4. **AI Assistant** — Open the Nova chat panel (Ctrl+/). Ask questions about tracked entities. Nova Pro streams responses with tool calls for entity lookup and sanctions screening.
+
+5. **Voice Interface** — Click the microphone button. Audio captures at 16kHz mono PCM and streams to Nova Sonic for real-time voice interaction.
+
+6. **Briefing Editor** — BlockNote collaborative editor with Y-Sweet CRDT sync. Multiple analysts can edit simultaneously. Export to PDF.
+
+7. **Intelligence Alerts** — GPS jamming zones auto-detect from NACp degradation. Dark vessel alerts fire for AIS gaps >6h. Cross-source correlations generate CRITICAL alerts.
+
+8. **Sanctions Screening** — Search any entity name against OpenSanctions. Global search has a "Sanctions Check" button for one-click screening.
 
 ## Monorepo Structure
 
 ```
 sentinel/
 ├── apps/
-│   ├── web/          # React SPA (Vite + TypeScript)
+│   ├── web/               # React SPA (Vite + TypeScript)
 │   │   └── src/
-│   │       ├── components/   # 73 components across 12 domains
-│   │       ├── views/        # 10 page views
-│   │       ├── stores/       # Zustand state (entity, UI, filter)
-│   │       ├── hooks/        # Custom hooks (WebSocket, Cesium, entities, chat)
-│   │       └── lib/          # API client, utilities, constants
-│   └── api/          # NestJS modular monolith
+│   │       ├── components/    # 79 components across 14 domains
+│   │       ├── views/         # 10 page views
+│   │       ├── stores/        # Zustand state (entity, UI, filter)
+│   │       ├── hooks/         # Custom hooks (WebSocket, Cesium, entities, chat)
+│   │       └── lib/           # API client, entity buffer, utilities, constants
+│   └── api/               # NestJS modular monolith
 │       └── src/
-│           └── modules/      # 12 feature modules
-│               ├── auth/         # JWT authentication
-│               ├── entities/     # Entity CRUD + search
-│               ├── timeseries/   # TimescaleDB + PostGIS queries
-│               ├── graph/        # Memgraph Bolt driver
-│               ├── osint/        # 8 OSINT source adapters
-│               ├── ai/           # Bedrock + 8 Nova models
-│               ├── gateway/      # Socket.IO WebSocket gateway
-│               ├── cases/        # Investigation management
-│               ├── alerts/       # Rule engine + watchlists
-│               ├── search/       # Cross-table full-text search
-│               ├── ingestion/    # File upload + entity extraction
-│               └── collaboration/ # Y-Sweet token management
+│           └── modules/       # 16 feature modules
+│               ├── auth/          # JWT authentication
+│               ├── entities/      # Entity CRUD + search
+│               ├── timeseries/    # TimescaleDB + PostGIS queries
+│               ├── graph/         # Memgraph Bolt driver
+│               ├── osint/         # 8 OSINT sources + GPS jamming + dark vessel + correlation + GDELT pipeline
+│               ├── ai/            # Bedrock + 8 Nova models
+│               ├── gateway/       # Socket.IO WebSocket gateway
+│               ├── cases/         # Investigation management
+│               ├── alerts/        # Rule engine + watchlists
+│               ├── search/        # Cross-table full-text search
+│               ├── ingestion/     # File upload + entity extraction
+│               ├── collaboration/ # Y-Sweet token management
+│               ├── sanctions/     # OpenSanctions + OFAC/UN screening
+│               ├── voice/         # Nova Sonic voice gateway
+│               ├── embeddings/    # pgvector + Nova Embeddings
+│               └── database/      # PostgreSQL pool + migrations
 ├── packages/
-│   └── shared/       # Shared types, constants, protobuf schema
+│   └── shared/            # Shared types, constants, protobuf schema
 ├── scripts/
-│   ├── seed-data.ts          # Generate 500+ mock entities
-│   └── init-memgraph.cypher  # Graph DB indices
-└── docker-compose.yml        # TimescaleDB, Redis, Memgraph, Y-Sweet
+│   ├── seed-data.ts           # Default users, alert rules, sample case
+│   ├── init-memgraph.cypher   # Graph DB indices
+│   └── nova-act/              # Nova Act web automation scripts
+│       ├── maritime_registry.py   # Equasis vessel lookup
+│       └── company_lookup.py      # OpenCorporates company search
+└── docker-compose.yml         # TimescaleDB, Redis, Memgraph, Y-Sweet
 ```
 
 ## Infrastructure
@@ -153,16 +175,19 @@ sentinel/
 ### Docker Services
 | Service | Port | Image |
 |---------|------|-------|
-| PostgreSQL + TimescaleDB | 5432 | timescale/timescaledb-ha:pg17-latest |
+| PostgreSQL + TimescaleDB + pgvector | 5432 | timescale/timescaledb-ha:pg17-latest |
 | Redis | 6379 | redis:7.4-alpine |
 | Memgraph | 7687 | memgraph/memgraph-mage:latest |
 | Memgraph Lab | 3001 | memgraph/lab:latest |
 | Y-Sweet | 8080 | jamsocket/y-sweet:latest |
 
 ### Database Schema Highlights
-- **entity_positions**: TimescaleDB hypertable with 1-hour chunks, automatic compression (7d), retention (90d)
-- **entity_hourly_summary**: Continuous aggregate for pattern-of-life analysis
-- **PostGIS indexes**: GIST indexes on `ST_Point(lon, lat)` for spatial queries
+- **entity_positions**: TimescaleDB hypertable with 1-hour chunks, compression (7d), retention (90d)
+- **gps_jamming_zones**: TimescaleDB hypertable tracking GPS interference zones
+- **ais_gaps / sts_transfers**: Dark vessel detection tables
+- **sanctions_entries**: OpenSanctions + OFAC/UN SDN list with fuzzy matching
+- **entity_embeddings**: pgvector for semantic search (1024-dim Nova embeddings)
+- **PostGIS**: GIST indexes on `ST_Point(lon, lat)` for proximity queries
 - **pg_trgm**: Trigram indexes for fuzzy entity name search
 
 ## Keyboard Shortcuts
@@ -175,10 +200,6 @@ sentinel/
 | `Escape` | Close panels / deselect |
 | `Ctrl+Shift+D` | Toggle dark mode |
 | `Ctrl+Shift+L` | Toggle layer panel |
-
-## Environment Variables
-
-See [.env.example](.env.example) for the full list. The app works without external API keys — all OSINT sources and AI models include realistic mock fallbacks.
 
 ## License
 
