@@ -14,6 +14,9 @@ import { AlertsModule } from './modules/alerts/alerts.module';
 import { CollaborationModule } from './modules/collaboration/collaboration.module';
 import { IngestionModule } from './modules/ingestion/ingestion.module';
 import { SearchModule } from './modules/search/search.module';
+import { SanctionsModule } from './modules/sanctions/sanctions.module';
+import { VoiceModule } from './modules/voice/voice.module';
+import { EmbeddingsModule } from './modules/embeddings/embeddings.module';
 
 @Module({
   imports: [
@@ -32,6 +35,9 @@ import { SearchModule } from './modules/search/search.module';
     CollaborationModule,
     IngestionModule,
     SearchModule,
+    SanctionsModule,
+    VoiceModule,
+    EmbeddingsModule,
   ],
 })
 export class AppModule {}
