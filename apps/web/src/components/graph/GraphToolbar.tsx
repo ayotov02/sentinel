@@ -26,7 +26,7 @@ const TOOLBAR_ACTIONS = [
   { icon: Download, label: 'Export PNG' },
 ] as const;
 
-export function GraphToolbar() {
+export function GraphToolbar({ onAction }: { onAction?: (action: string) => void }) {
   return (
     <TooltipProvider delayDuration={100}>
       <div className="flex items-center gap-1 border-b bg-card px-3 py-1.5">
@@ -36,7 +36,7 @@ export function GraphToolbar() {
         {TOOLBAR_ACTIONS.map(({ icon: Icon, label }) => (
           <Tooltip key={label}>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onAction?.(label)}>
                 <Icon className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
