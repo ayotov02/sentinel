@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: timescale/timescaledb-ha:pg17-latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: sentinel
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel_dev
+    volumes:
+      - pg_data:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--requirepass", "sentinel_dev"]
+
+  memgraph:
+    image: memgraph/memgraph-mage:latest
+    ports:
+      - "7687:7687"
+      - "7444:7444"
+    volumes:
+      - mg_lib:/var/lib/memgraph
+      - mg_log:/var/log/memgraph
+    command: ["--log-level=WARNING", "--also-log-to-stderr=true"]
+    environment:
+      MEMGRAPH_USER: sentinel
+      MEMGRAPH_PASSWORD: sentinel_dev
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 0;' | mgconsole || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  memgraph-lab:
+    image: memgraph/lab:latest
+    ports:
+      - "3001:3000"
+    depends_on:
+      memgraph:
+        condition: service_healthy
+    environment:
+      QUICK_CONNECT_MG_HOST: memgraph
+      QUICK_CONNECT_MG_PORT: 7687
+
+  y-sweet:
+    image: jamsocket/y-sweet:latest
+    ports:
+      - "8080:8080"
+
+volumes:
+  pg_data:
+  mg_lib:
+  mg_log:
