@@ -1,0 +1,20 @@
+{
+  "name": "sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SENTINEL — OSINT Intelligence Platform",
+  "scripts": {
+    "dev": "pnpm --parallel --filter web --filter api run dev",
+    "build": "pnpm --filter shared run build && pnpm --filter api run build && pnpm --filter web run build",
+    "lint": "pnpm --recursive run lint",
+    "clean": "pnpm --recursive run clean",
+    "db:migrate": "pnpm --filter api run db:migrate",
+    "db:seed": "pnpm --filter api run db:seed",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
