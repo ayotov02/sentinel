@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Viewer, Ion, Color, Cartesian3, Math as CesiumMath, ImageryLayer, IonWorldImageryStyle } from 'cesium';
+import { Viewer, Color, Cartesian3, Math as CesiumMath, UrlTemplateImageryProvider, ImageryLayer } from 'cesium';
 import 'cesium/Build/CesiumUnminified/Widgets/widgets.css';
 import { EntityLayer } from './EntityLayer';
 import { LayerPanel } from './LayerPanel';
@@ -21,11 +21,8 @@ export function GlobeView() {
   useEffect(() => {
     if (!containerRef.current || viewerRef.current) return;
 
-    // Set Cesium Ion token
-    const token = (import.meta as any).env?.VITE_CESIUM_ION_TOKEN;
-    if (token) Ion.defaultAccessToken = token;
-
     const viewer = new Viewer(containerRef.current, {
+      baseLayer: false,
       animation: false,
       baseLayerPicker: false,
       fullscreenButton: false,
@@ -37,17 +34,26 @@ export function GlobeView() {
       timeline: false,
       navigationHelpButton: false,
       scene3DOnly: true,
+      requestRenderMode: true,
       skyBox: false,
-      skyAtmosphere: undefined,
-      requestRenderMode: false,
     });
 
+    // Add CartoDB Dark Matter basemap (no Ion token needed)
+    const cartoProvider = new UrlTemplateImageryProvider({
+      url: 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+      credit: 'Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
+    });
+    viewer.imageryLayers.addImageryProvider(cartoProvider);
+
     // Dark theme styling
-    viewer.scene.backgroundColor = Color.fromCssColorString('#0a0e1a');
-    viewer.scene.globe.baseColor = Color.fromCssColorString('#0f172a');
-    viewer.scene.fog.enabled = true;
+    viewer.scene.backgroundColor = Color.fromCssColorString('#0a0a1a');
+    viewer.scene.globe.baseColor = Color.fromCssColorString('#0a0a1a');
+    viewer.scene.globe.showGroundAtmosphere = false;
+    viewer.scene.skyAtmosphere.show = false;
+    viewer.scene.sun.show = false;
+    viewer.scene.moon.show = false;
+    viewer.scene.fog.enabled = false;
     viewer.scene.globe.enableLighting = false;
-    viewer.scene.globe.showGroundAtmosphere = true;
 
     // Set initial camera position (Mediterranean)
     viewer.camera.setView({
