@@ -18,6 +18,23 @@ export function GlobeView() {
   const layerPanelOpen = useUiStore((s) => s.layerPanelOpen);
   const { connected } = useWebSocket();
 
+  const [jammingZones, setJammingZones] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchJammingZones() {
+      try {
+        const res = await fetch('/api/osint/gps-jamming/active');
+        if (res.ok) {
+          const zones = await res.json();
+          setJammingZones(zones);
+        }
+      } catch {}
+    }
+    fetchJammingZones();
+    const interval = setInterval(fetchJammingZones, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (!containerRef.current || viewerRef.current) return;
 
@@ -81,6 +98,21 @@ export function GlobeView() {
 
       {/* Overlay: deck.gl EntityLayer */}
       {viewerReady && <EntityLayer viewerRef={viewerRef} />}
+
+      {/* GPS Jamming Zones */}
+      {jammingZones.length > 0 && (
+        <div className="absolute top-16 left-4 z-10 space-y-1">
+          {jammingZones.map((zone: any, i: number) => (
+            <div
+              key={i}
+              className="flex items-center gap-2 rounded bg-red-500/20 border border-red-500/40 px-2 py-1 text-[10px] text-red-300 backdrop-blur-sm"
+            >
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              GPS Jamming: {zone.centerLat?.toFixed(1)},{zone.centerLon?.toFixed(1)} — {zone.severity} ({zone.affectedAircraft} aircraft)
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Search bar overlay */}
       <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2">
