@@ -11,6 +11,9 @@ import { SatellitesSource } from './sources/satellites.source';
 import { NotamsSource } from './sources/notams.source';
 import { FiresSource } from './sources/fires.source';
 import { DisastersSource } from './sources/disasters.source';
+import { GpsJammingService } from './gps-jamming.service';
+import { DarkVesselService } from './dark-vessel.service';
+import { CorrelationService } from './correlation.service';
 
 interface CircuitBreaker {
   failures: number;
@@ -38,6 +41,9 @@ export class OsintService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
     private readonly config: ConfigService,
+    private readonly gpsJamming: GpsJammingService,
+    private readonly darkVessel: DarkVesselService,
+    private readonly correlation: CorrelationService,
   ) {
     this.aviation = new AviationSource(config);
     this.maritime = new MaritimeSource(config);
@@ -101,6 +107,12 @@ export class OsintService implements OnModuleInit, OnModuleDestroy {
         if (entities.length > 0) {
           await this.processUpdates(entities, source.name);
           this.logger.log(`${source.name}: ${entities.length} entities ingested`);
+          // Post-processing: GPS jamming detection for aviation
+          if (source.name === 'aviation') {
+            this.gpsJamming.detectJammingZones(entities).catch(err =>
+              this.logger.error(`GPS jamming detection failed: ${err}`)
+            );
+          }
         }
         breaker.failures = 0;
         this.breakers.set(source.name, breaker);
@@ -114,6 +126,15 @@ export class OsintService implements OnModuleInit, OnModuleDestroy {
         this.breakers.set(source.name, breaker);
         this.logger.error(`Failed to poll ${source.name}: ${err}`);
       }
+    }
+  }
+
+  @Cron('*/5 * * * *') // Every 5 minutes
+  async runCorrelations() {
+    try {
+      await this.correlation.runCorrelations();
+    } catch (err) {
+      this.logger.error(`Correlation engine failed: ${err}`);
     }
   }
 
