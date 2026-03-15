@@ -7,7 +7,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
-    "db:migrate": "node -e \"const {readFileSync}=require('fs');const {Client}=require('pg');const c=new Client({host:process.env.POSTGRES_HOST||'localhost',port:5432,database:process.env.POSTGRES_DB||'sentinel',user:process.env.POSTGRES_USER||'sentinel',password:process.env.POSTGRES_PASSWORD||'sentinel_dev'});c.connect().then(()=>c.query(readFileSync('./src/modules/database/migrations/001-initial.sql','utf8'))).then(()=>{console.log('Migration complete');c.end()}).catch(e=>{console.error(e);c.end();process.exit(1)})\"",
+    "db:migrate": "node -e \"const {readFileSync}=require('fs');const {Client}=require('pg');const c=new Client({host:process.env.POSTGRES_HOST||'localhost',port:5432,database:process.env.POSTGRES_DB||'sentinel',user:process.env.POSTGRES_USER||'sentinel',password:process.env.POSTGRES_PASSWORD||'sentinel_dev'});c.connect().then(()=>c.query(readFileSync('./src/modules/database/migrations/001-initial.sql','utf8'))).then(()=>c.query(readFileSync('./src/modules/database/migrations/002-extensions.sql','utf8'))).then(()=>{console.log('Migrations complete');c.end()}).catch(e=>{console.error(e);c.end();process.exit(1)})\"",
     "db:seed": "ts-node ../scripts/seed-data.ts",
     "clean": "rm -rf dist"
   },

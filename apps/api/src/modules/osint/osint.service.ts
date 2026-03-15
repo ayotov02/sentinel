@@ -1,16 +1,16 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
 import { PG_POOL } from '../database/database.module';
-import { OpenSkySource } from './sources/opensky.source';
-import { AdsbExchangeSource } from './sources/adsb-exchange.source';
-import { AisHubSource } from './sources/aishub.source';
-import { AcledSource } from './sources/acled.source';
-import { IodaSource } from './sources/ioda.source';
-import { SpaceTrackSource } from './sources/spacetrack.source';
-import { NotamSource } from './sources/notam.source';
-import { FirmsSource } from './sources/firms.source';
+import { AviationSource } from './sources/aviation.source';
+import { MaritimeSource } from './sources/maritime.source';
+import { ConflictSource } from './sources/conflict.source';
+import { InternetSource } from './sources/internet.source';
+import { SatellitesSource } from './sources/satellites.source';
+import { NotamsSource } from './sources/notams.source';
+import { FiresSource } from './sources/fires.source';
+import { DisastersSource } from './sources/disasters.source';
 
 interface CircuitBreaker {
   failures: number;
@@ -19,10 +19,19 @@ interface CircuitBreaker {
 }
 
 @Injectable()
-export class OsintService {
+export class OsintService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OsintService.name);
   private readonly breakers = new Map<string, CircuitBreaker>();
   private readonly lastPoll = new Map<string, number>();
+
+  private readonly aviation: AviationSource;
+  private readonly maritime: MaritimeSource;
+  private readonly conflict: ConflictSource;
+  private readonly internet: InternetSource;
+  private readonly satellites: SatellitesSource;
+  private readonly notams: NotamsSource;
+  private readonly fires: FiresSource;
+  private readonly disasters: DisastersSource;
 
   private readonly sources: { name: string; intervalMs: number; fetch: () => Promise<any[]> }[];
 
@@ -30,25 +39,44 @@ export class OsintService {
     @Inject(PG_POOL) private readonly pool: Pool,
     private readonly config: ConfigService,
   ) {
-    const opensky = new OpenSkySource(config);
-    const adsb = new AdsbExchangeSource(config);
-    const ais = new AisHubSource(config);
-    const acled = new AcledSource(config);
-    const ioda = new IodaSource(config);
-    const spacetrack = new SpaceTrackSource(config);
-    const notam = new NotamSource(config);
-    const firms = new FirmsSource(config);
+    this.aviation = new AviationSource(config);
+    this.maritime = new MaritimeSource(config);
+    this.conflict = new ConflictSource(config);
+    this.internet = new InternetSource(config);
+    this.satellites = new SatellitesSource(config);
+    this.notams = new NotamsSource(config);
+    this.fires = new FiresSource(config);
+    this.disasters = new DisastersSource(config);
 
     this.sources = [
-      { name: 'opensky', intervalMs: 10_000, fetch: () => opensky.fetch() },
-      { name: 'adsb-exchange', intervalMs: 5_000, fetch: () => adsb.fetch() },
-      { name: 'aishub', intervalMs: 60_000, fetch: () => ais.fetch() },
-      { name: 'acled', intervalMs: 86_400_000, fetch: () => acled.fetch() },
-      { name: 'ioda', intervalMs: 300_000, fetch: () => ioda.fetch() },
-      { name: 'spacetrack', intervalMs: 3_600_000, fetch: () => spacetrack.fetch() },
-      { name: 'notam', intervalMs: 900_000, fetch: () => notam.fetch() },
-      { name: 'firms', intervalMs: 1_800_000, fetch: () => firms.fetch() },
+      { name: 'aviation', intervalMs: 15_000, fetch: () => this.aviation.fetch() },
+      { name: 'maritime', intervalMs: 5_000, fetch: () => this.maritime.fetch() },
+      { name: 'conflict', intervalMs: 300_000, fetch: () => this.conflict.fetch() },
+      { name: 'internet', intervalMs: 300_000, fetch: () => this.internet.fetch() },
+      { name: 'satellites', intervalMs: 7_200_000, fetch: () => this.satellites.fetch() },
+      { name: 'notams', intervalMs: 900_000, fetch: () => this.notams.fetch() },
+      { name: 'fires', intervalMs: 1_800_000, fetch: () => this.fires.fetch() },
+      { name: 'disasters', intervalMs: 60_000, fetch: () => this.disasters.fetch() },
     ];
+  }
+
+  async onModuleInit() {
+    this.logger.log('OSINT Service starting — connecting to live data sources');
+    // Start AISStream WebSocket connection
+    try {
+      await this.maritime.connect();
+      this.maritime.on('batch', (batch: any[]) => {
+        this.processUpdates(batch, 'aisstream').catch(err =>
+          this.logger.error(`Failed to process maritime batch: ${err}`)
+        );
+      });
+    } catch (err) {
+      this.logger.warn(`Maritime WebSocket connection failed: ${err}`);
+    }
+  }
+
+  async onModuleDestroy() {
+    this.maritime.disconnect();
   }
 
   @Cron(CronExpression.EVERY_5_SECONDS)
@@ -63,6 +91,7 @@ export class OsintService {
       if (breaker.isOpen) {
         breaker.isOpen = false;
         breaker.failures = 0;
+        this.logger.log(`Circuit breaker RESET for ${source.name}`);
       }
 
       this.lastPoll.set(source.name, now);
@@ -71,6 +100,7 @@ export class OsintService {
         const entities = await source.fetch();
         if (entities.length > 0) {
           await this.processUpdates(entities, source.name);
+          this.logger.log(`${source.name}: ${entities.length} entities ingested`);
         }
         breaker.failures = 0;
         this.breakers.set(source.name, breaker);
@@ -87,10 +117,32 @@ export class OsintService {
     }
   }
 
+  /**
+   * Get current source health status
+   */
+  getSourceHealth(): Array<{ name: string; status: string; lastPoll: number; failures: number }> {
+    return this.sources.map(s => {
+      const breaker = this.breakers.get(s.name);
+      const lastPollTime = this.lastPoll.get(s.name) || 0;
+      let status = 'idle';
+      if (breaker?.isOpen) status = 'circuit_open';
+      else if (lastPollTime > 0 && (breaker?.failures || 0) === 0) status = 'healthy';
+      else if ((breaker?.failures || 0) > 0) status = 'degraded';
+
+      return {
+        name: s.name,
+        status,
+        lastPoll: lastPollTime,
+        failures: breaker?.failures || 0,
+      };
+    });
+  }
+
   private async processUpdates(entities: any[], sourceName: string) {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+
       for (const e of entities) {
         // Upsert entity
         await client.query(
@@ -104,6 +156,7 @@ export class OsintService {
              last_seen = NOW()`,
           [e.entityType, e.entityId, e.displayName, JSON.stringify(e.properties || {}), sourceName, e.confidence || 1.0]
         );
+
         // Insert position if lat/lon present
         if (e.lat != null && e.lon != null) {
           await client.query(
@@ -113,8 +166,8 @@ export class OsintService {
           );
         }
       }
+
       await client.query('COMMIT');
-      this.logger.debug(`Processed ${entities.length} entities from ${sourceName}`);
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
